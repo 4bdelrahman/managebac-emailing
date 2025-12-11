@@ -33,6 +33,12 @@ def classify_email(subject, sender, body):
         Boolean: True if ManageBac-related, False otherwise
     """
     try:
+        # Quick check: If sender is from @managebac.com, it's definitely ManageBac
+        if '@managebac.com' in sender.lower():
+            logger.info(f"Auto-classified as ManageBac (sender: {sender})")
+            return True
+        
+        # Otherwise, use AI classification
         prompt = build_classification_prompt(subject, sender, body)
         
         # Use retry logic for API calls
@@ -83,20 +89,26 @@ def build_classification_prompt(subject, sender, body):
     # Truncate body to first 500 characters
     body_preview = body[:500] if body else "No body content"
     
-    prompt = f"""Determine if this email is related to ManageBac (a school management platform).
+    prompt = f"""You are classifying emails for a student using ManageBac (school management platform).
 
-ManageBac emails typically:
-- Come from @managebac.com domains or school email addresses
-- Mention ManageBac, assignments, deadlines, grades, CAS, TOK, IB, coursework
-- Are about school announcements, tasks, academic matters, or student activities
-- Include keywords like: submission, due date, reflection, teacher, class, course
+IMPORTANT RULES:
+1. If the sender contains "@managebac.com" → ALWAYS answer YES
+2. If the email mentions IB subjects (DP, MYP, CP), assignments, or school activities → answer YES
+3. If it's about CAS, TOK, Extended Essay, or IB coursework → answer YES
+4. If it's promotional, marketing, or unrelated to school → answer NO
 
-Email Details:
+ManageBac-related indicators:
+- Sender: @managebac.com, school domains, teacher emails
+- Keywords: ManageBac, IB DP/MYP, assignment, submission, grade, CAS, TOK, coursework, due date, teacher comment
+- Content: School announcements, academic tasks, student activities
+
+Email to classify:
 From: {sender}
 Subject: {subject}
-Body Preview: {body_preview}
+Body: {body_preview}
 
-Is this email related to ManageBac? Respond with ONLY "YES" or "NO"."""
+Question: Is this email related to ManageBac or school activities?
+Answer with ONLY "YES" or "NO"."""
 
     return prompt
 
@@ -152,6 +164,8 @@ def fallback_classification(subject, sender, body):
         'cas reflection',
         'tok',
         'ib diploma',
+        'ib dp',
+        'ib myp',
         'assignment submitted',
         'grade posted',
         'due date',
