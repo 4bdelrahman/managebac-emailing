@@ -41,9 +41,7 @@ jobs:
           GROQ_API_ENDPOINT: https://api.groq.com/openai/v1/chat/completions
           MANAGEBAC_LABEL_NAME: ManageBac
           MAX_EMAILS_PER_RUN: 50
-        run: |
-          cd execution
-          python main_classifier.py
+        run: python execution/main_classifier.py
       
       - name: Upload logs (on failure)
         if: failure()
