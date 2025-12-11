@@ -32,8 +32,9 @@ def fetch_unprocessed_emails(service, max_results=50):
     try:
         label_name = os.getenv('MANAGEBAC_LABEL_NAME', 'ManageBac')
         
-        # Query: emails in inbox, not labeled as ManageBac, from last 7 days
-        query = f"in:inbox -label:{label_name} newer_than:7d"
+        # Query: emails in inbox, unread, not labeled as ManageBac, from last 7 days
+        # Gmail API returns results sorted by newest first by default
+        query = f"in:inbox is:unread -label:{label_name} newer_than:7d"
         
         logger.info(f"Fetching emails with query: {query}")
         
