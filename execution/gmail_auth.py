@@ -51,25 +51,50 @@ def get_gmail_service():
             try:
                 print("Refreshing access token...")
                 creds.refresh(Request())
+                # Save refreshed token
+                with open(token_file, 'w') as token:
+                    token.write(creds.to_json())
+                print("✅ Token refreshed successfully")
             except Exception as e:
-                print(f"Error refreshing token: {e}")
-                creds = None
-        
-        if not creds:
+                error_msg = str(e)
+                if "invalid_grant" in error_msg.lower():
+                    raise Exception(
+                        "❌ Token refresh failed: Token has been revoked or expired.\n"
+                        "SOLUTION: You need to regenerate token.json locally:\n"
+                        "1. Run: python execution/main_classifier.py\n"
+                        "2. Complete the browser OAuth flow\n"
+                        "3. Update GitHub Secret 'GMAIL_TOKEN' with the new token.json content\n"
+                        f"Original error: {e}"
+                    )
+                else:
+                    raise Exception(f"Error refreshing token: {e}")
+        else:
+            # No valid credentials and can't refresh - need OAuth flow
             if not os.path.exists(credentials_file):
                 raise FileNotFoundError(
                     f"Credentials file '{credentials_file}' not found. "
                     "Please ensure client_secret.json is in the root directory."
                 )
             
+            # Check if we're in a CI environment (no browser available)
+            if os.getenv('CI') or os.getenv('GITHUB_ACTIONS'):
+                raise Exception(
+                    "❌ Cannot run OAuth flow in GitHub Actions (no browser available).\n"
+                    "SOLUTION: Generate token.json locally and update GitHub Secret:\n"
+                    "1. Run locally: python execution/main_classifier.py\n"
+                    "2. Complete the browser OAuth flow\n"
+                    "3. Copy the generated token.json\n"
+                    "4. Update GitHub Secret 'GMAIL_TOKEN' with the token.json content"
+                )
+            
             print("Starting OAuth flow...")
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
-        
-        # Save credentials for future use
-        with open(token_file, 'w') as token:
-            token.write(creds.to_json())
-        print(f"✅ Credentials saved to {token_file}")
+            
+            # Save credentials for future use
+            with open(token_file, 'w') as token:
+                token.write(creds.to_json())
+            print(f"✅ Credentials saved to {token_file}")
     
     try:
         service = build('gmail', 'v1', credentials=creds)
